@@ -2,7 +2,7 @@ import $ from "jquery";
 
 // ToDo: titles
 // gridlines
-// There is no need to rerender every cell after scroll. Group cells by rows. 
+// There is no need to rerender every cell after scroll. Group cells by rows.
 // We need to render only last row.
 
 export interface IViewport {
@@ -103,11 +103,11 @@ export class GridLayout {
    * In case of cartesian when we calculate axes we will need to recalculate viewport based on axes margins. We should expose this before the actual rendering is done.
    */
   public getCellDimensions(viewPort: IViewport): IViewport {
-    let totalMarginBottom = this.margins.left * (this.settings.columnCount + 1);
+    let marginLeft = this.margins.left * (this.settings.columnCount + 1);
     let totalMarginTop = this.margins.top * (this.settings.rowCount + 1);
-    let width =
-      (this.settings.viewPort.width - totalMarginBottom) /
-      this.settings.columnCount;
+    let totalWidth = this.settings.viewPort.width - marginLeft;
+    if (this.hasScroll()) totalWidth -= 20;
+    let width = totalWidth / this.settings.columnCount;
     let height =
       (this.settings.viewPort.height - totalMarginTop) / this.settings.rowCount;
 
@@ -128,13 +128,13 @@ export class GridLayout {
     event.stopPropagation();
 
     window.requestAnimationFrame(() => {
-        console.log(this.grid.scrollTop(), this.scrollTop);
+      console.log(this.grid.scrollTop(), this.scrollTop);
       // the case when we setting scroll overselves
       // Chrome rouns scroll top values.
       if (Math.abs(this.grid.scrollTop() - this.scrollTop) < 1) {
         this.isRendering = false;
         return;
-      } 
+      }
 
       this.grid.css({
         overflow: "hidden"
@@ -143,6 +143,7 @@ export class GridLayout {
       if (this.grid.scrollTop() > this.scrollTop) this.currentRowIndex++;
       else this.currentRowIndex--;
 
+      //ToDo: We should not empty the whole container.
       this.gridCellContainer.empty();
       this.render();
 
