@@ -15,6 +15,11 @@ export interface IMargins {
   left: number;
 }
 
+export interface GridHeader {
+  size: number;
+  render: () => void
+}
+
 export interface ICellRenderData {
   rowIndex: number;
   columnIndex: number;
@@ -30,6 +35,10 @@ export interface GridSettings {
   cellCount: number;
   viewPort: IViewport;
   renderCell: (data: ICellRenderData) => Promise<IViewport>;
+  footer?: GridHeader;
+  left?: GridHeader;
+  right?: GridHeader;
+  
 }
 
 export class GridLayout {
