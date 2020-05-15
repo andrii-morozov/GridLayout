@@ -20,7 +20,11 @@ let settings: GridSettings = {
     width: 500,
     height: 500
   },
-  renderCell: renderUnsharedAxis
+  renderCell: renderUnsharedAxis,
+  footer: {
+      size: 20,
+      render: renderFooter
+  }
 }
 
 initializeSettings(settings);
@@ -43,11 +47,11 @@ let gridLayout = new GridLayout(viewPort, settings);
 // Initialize settings
 gridLayout.render();
 
-function renderUnsharedAxis(data: ICellRenderData): Promise<IViewport> {
+function renderUnsharedAxis(data: ICellRenderData): Promise<void> {
     let text = $('<span />').appendTo(data.element);
     text.text(`Cell ${data.rowIndex}-${data.columnIndex} CellIndex: ${data.index}`)
 
-    return Promise.resolve(data.viewPort);
+    return Promise.resolve();
 }
 
 function renderFooter(element: JQuery): void {

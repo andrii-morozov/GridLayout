@@ -34,7 +34,7 @@ export interface GridSettings {
   // identifies how many cells total in the greed
   cellCount: number;
   viewPort: IViewport;
-  renderCell: (data: ICellRenderData) => Promise<IViewport>;
+  renderCell: (data: ICellRenderData) => Promise<void>;
   footer?: GridHeader;
   left?: GridHeader;
   right?: GridHeader;
@@ -83,7 +83,7 @@ export class GridLayout {
     });
 
     this.updateScrollPosition();
-
+    this.renderFooter();
     await this.renderCells();
   }
 
@@ -150,7 +150,7 @@ export class GridLayout {
     if (!this.gridFooter) {
       this.gridFooter = $("<div />")
         .css("height", this.settings.footer.size)
-        .width(this.settings.viewPort.width)
+        .css('width', this.settings.viewPort.width)
         .addClass("grid-footer")
         .appendTo(this.grid);
     }
@@ -176,7 +176,7 @@ export class GridLayout {
       for (let k = 0; k < this.settings.columnCount; k++) {
         let cell = this.buildCell(y, x, viewPort);
         this.gridCellContainer.append(cell);
-        let requiredViewport = await this.settings.renderCell({
+        await this.settings.renderCell({
           rowIndex: i,
           columnIndex: k,
           index: this.getCellIndex(i, k),
