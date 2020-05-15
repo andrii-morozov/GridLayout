@@ -17,7 +17,7 @@ export interface IMargins {
 
 export interface GridHeader {
   size: number;
-  render: () => void
+  render: (element: JQuery) => void;
 }
 
 export interface ICellRenderData {
@@ -38,16 +38,16 @@ export interface GridSettings {
   footer?: GridHeader;
   left?: GridHeader;
   right?: GridHeader;
-  
 }
 
 export class GridLayout {
   private grid: JQuery;
   private margins: IMargins;
   // used to calculate scroll position.
-  private currentRowIndex: number;
+  private currentCellIndex: number;
   private gridCellContainer: JQuery;
   private gridScrollWrapper: JQuery;
+  private gridFooter: JQuery;
 
   private scrollTop: number = 0;
   private isRendering = false;
@@ -56,7 +56,7 @@ export class GridLayout {
     private readonly container: HTMLElement,
     private readonly settings: GridSettings
   ) {
-    this.currentRowIndex = 0;
+    this.currentCellIndex = 0;
     // We will read settings from objects.
     // Actually the same will happen for row/columns count.
     this.margins = {
@@ -69,39 +69,40 @@ export class GridLayout {
   // feedback when redering is done.
   public async render(): Promise<void> {
     if (!this.grid) {
-      this.grid = $("<div />");
-      this.grid
-        .addClass("grid")
-        .css({
-          width: this.settings.viewPort.width,
-          height: this.settings.viewPort.height
-        })
-        .appendTo(this.container)
-        .on("scroll", (event: JQueryEventObject) => {
-          this.onScroll(event);
-          return false;
-        });
-      this.gridScrollWrapper = $("<div />");
-      this.gridScrollWrapper
-        .appendTo(this.grid)
-        .addClass("grid-scroll-wrapper");
-
-      this.gridCellContainer = $("<div />");
-      this.gridCellContainer
-        .appendTo(this.gridScrollWrapper)
-        .addClass("grid-cell-container");
+      // lazy initialiation. Only when we need it.
+      this.initGridLayout();
     }
 
     this.gridCellContainer.css({
       width: !this.hasScroll()
         ? this.settings.viewPort.width
         : this.settings.viewPort.width - 20,
-      height: this.settings.viewPort.height
+      height: this.settings.footer
+        ? this.settings.viewPort.height - this.settings.footer.size
+        : this.settings.viewPort.height
     });
 
     this.updateScrollPosition();
 
     await this.renderCells();
+  }
+
+  private initGridLayout() {
+    this.grid = $("<div />");
+    this.grid
+      .addClass("grid")
+      .css({
+        width: this.settings.viewPort.width,
+        height: this.settings.viewPort.height
+      })
+      .appendTo(this.container);
+    this.gridScrollWrapper = $("<div />");
+    this.gridScrollWrapper.appendTo(this.grid).addClass("grid-scroll-wrapper");
+
+    this.gridCellContainer = $("<div />");
+    this.gridCellContainer
+      .appendTo(this.gridScrollWrapper)
+      .addClass("grid-cell-container");
   }
 
   public destroy(): void {
@@ -120,47 +121,10 @@ export class GridLayout {
     let height =
       (this.settings.viewPort.height - totalMarginTop) / this.settings.rowCount;
 
-    // reduce view port based on
-    if (this.hasScroll()) width -= 10;
-
     return {
       width: width,
       height: height
     };
-  }
-
-  private onScroll(event: JQueryEventObject) {
-    if (this.isRendering) return;
-
-    this.isRendering = true;
-    event.preventDefault();
-    event.stopPropagation();
-
-    window.requestAnimationFrame(() => {
-      console.log(this.grid.scrollTop(), this.scrollTop);
-      // the case when we setting scroll overselves
-      // Chrome rouns scroll top values.
-      if (Math.abs(this.grid.scrollTop() - this.scrollTop) < 1) {
-        this.isRendering = false;
-        return;
-      }
-
-      this.grid.css({
-        overflow: "hidden"
-      });
-
-      if (this.grid.scrollTop() > this.scrollTop) this.currentRowIndex++;
-      else this.currentRowIndex--;
-
-      //ToDo: We should not empty the whole container.
-      this.gridCellContainer.empty();
-      this.render();
-
-      this.grid.css({
-        "overflow-y": "scroll"
-      });
-      this.isRendering = false;
-    });
   }
 
   private hasScroll(): boolean {
@@ -180,6 +144,29 @@ export class GridLayout {
     return totalRows * rowHeight;
   }
 
+  private renderFooter() {
+    if (!this.settings.footer) return;
+
+    if (!this.gridFooter) {
+      this.gridFooter = $("<div />")
+        .css("height", this.settings.footer.size)
+        .width(this.settings.viewPort.width)
+        .addClass("grid-footer")
+        .appendTo(this.grid);
+    }
+
+    let viewPort = this.getCellDimensions(this.settings.viewPort);
+    viewPort.height = this.settings.footer.size;
+    let y = 0;
+    let x = this.margins.left;
+    for (let i = 0; i < this.settings.rowCount; i++) {
+      let x = this.margins.left;
+      let cell = this.buildCell(y, x, viewPort);
+      this.settings.footer.render(cell);
+       x += viewPort.width + this.margins.left;
+    }
+  }
+
   private async renderCells(): Promise<void> {
     let viewPort = this.getCellDimensions(this.settings.viewPort);
     let y = this.margins.top;
@@ -189,7 +176,7 @@ export class GridLayout {
       for (let k = 0; k < this.settings.columnCount; k++) {
         let cell = this.buildCell(y, x, viewPort);
         this.gridCellContainer.append(cell);
-        let requridViewPort = await this.settings.renderCell({
+        let requiredViewport = await this.settings.renderCell({
           rowIndex: i,
           columnIndex: k,
           index: this.getCellIndex(i, k),
@@ -209,10 +196,10 @@ export class GridLayout {
     let totalRows = this.getTotalRows();
     let height = totalRows * rowHeight;
 
-    this.scrollTop = rowHeight * this.currentRowIndex;
+    this.scrollTop = rowHeight * this.currentCellIndex;
     this.grid.scrollTop(this.scrollTop);
     this.gridCellContainer.css({
-      transform: `translate(0, ${rowHeight * this.currentRowIndex}px)`
+      transform: `translate(0, ${rowHeight * this.currentCellIndex}px)`
     });
 
     this.gridScrollWrapper.css({
@@ -225,7 +212,13 @@ export class GridLayout {
   }
 
   private getCellIndex(row: number, column: number): number {
-    return (this.currentRowIndex + row) * this.settings.columnCount + column;
+    return (
+      (this.getCurrentRowIndex() + row) * this.settings.columnCount + column
+    );
+  }
+
+  private getCurrentRowIndex(): number {
+    return Math.floor((this.currentCellIndex + 1) / this.settings.columnCount);
   }
 
   private buildCell(y: number, x: number, viewPort: IViewport): JQuery {
