@@ -50,6 +50,11 @@ function renderUnsharedAxis(data: ICellRenderData): Promise<IViewport> {
     return Promise.resolve(data.viewPort);
 }
 
+function renderFooter(element: JQuery): void {
+    let text = $('<span />').appendTo(element);
+    text.text(`Footer`)
+}
+
 function initializeSettings(settings: GridSettings): void {
   $('#width').val(settings.viewPort.width)
   $('#height').val(settings.viewPort.height)
@@ -73,6 +78,10 @@ function readSettings(): GridSettings {
       width: width,
       height: height
     },
-    renderCell: renderUnsharedAxis
+    renderCell: renderUnsharedAxis, 
+    footer: {
+      size: 20,
+      render: renderFooter
+    }
   }
 }
