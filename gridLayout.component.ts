@@ -129,18 +129,27 @@ export class GridLayout {
     margins: IMargins,
     includeTitle: boolean
   ): IViewport {
-    let marginLeft = this.margins.left * (this.settings.columnCount + 1);
-    let totalMarginTop = this.margins.top * (this.settings.rowCount + 1);
-    let totalWidth = this.settings.viewPort.width - marginLeft;
-    if (this.hasScroll()) totalWidth -= 20;
-    if (this.settings.footer) totalMarginTop -= this.settings.footer.size;
-    let width = totalWidth / this.settings.columnCount;
-    let height =
-      (this.settings.viewPort.height - totalMarginTop) / this.settings.rowCount;
+    let width =
+      this.settings.viewPort.width -
+      this.headerMargins.left -
+      this.headerMargins.right;
+    
+    let height = 
+      this.settings.viewPort.height -
+      this.headerMargins.top -
+      this.headerMargins.bottom;
+      
+    let totalXMargin = this.margins.left * (this.settings.columnCount + 1);
+    let totalYMargin = this.margins.top * (this.settings.rowCount + 1);
+    width = width - totalXMargin;
+    if (this.hasScroll()) width -= 20;
+    let cellWidth = width / this.settings.columnCount;
+    let cellHeight =
+      (height - totalYMargin) / this.settings.rowCount;
 
     return {
-      width: width,
-      height: height
+      width: cellWidth,
+      height: cellHeight
     };
   }
 
@@ -149,12 +158,12 @@ export class GridLayout {
   }
 
   private updateHeaderMargins() {
-     this.headerMargins = {
-       bottom: this.settings.footer ? this.settings.footer.size: 0,
-       left: this.settings.left ? this.settings.left.size: 0,
-       right: this.settings.right ? this.settings.right.size: 0,
-       top: 0
-     }
+    this.headerMargins = {
+      bottom: this.settings.footer ? this.settings.footer.size : 0,
+      left: this.settings.left ? this.settings.left.size : 0,
+      right: this.settings.right ? this.settings.right.size : 0,
+      top: 0
+    };
   }
 
   private hasScroll(): boolean {
