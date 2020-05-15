@@ -13,6 +13,8 @@ export interface IViewport {
 export interface IMargins {
   top: number;
   left: number;
+  bottom: number;
+  right: number;
 }
 
 export interface GridHeader {
@@ -46,11 +48,13 @@ export class GridLayout {
   // used to calculate scroll position.
   private currentCellIndex: number;
   private gridCellContainer: JQuery;
+  // ToDo: reuse some of the existing scroll mechanisms.
   private gridScrollWrapper: JQuery;
   private gridFooter: JQuery;
 
   private scrollTop: number = 0;
   private isRendering = false;
+  private headerMargins: IMargins;
 
   constructor(
     private readonly container: HTMLElement,
@@ -61,7 +65,9 @@ export class GridLayout {
     // Actually the same will happen for row/columns count.
     this.margins = {
       top: 10,
-      left: 10
+      left: 10,
+      bottom: 0,
+      right: 0
     };
   }
 
@@ -109,14 +115,25 @@ export class GridLayout {
     this.grid.remove();
   }
 
+  public calculateCellSize(margins: IMargins): number {
+    // In case for external calculation we should give the cell
+    // size that chart will use to render.That does not include the title
+    // even though it's actually part of the cell.
+    return this.getCellDimensions(margins, false);
+  }
+
   /**
    * In case of cartesian when we calculate axes we will need to recalculate viewport based on axes margins. We should expose this before the actual rendering is done.
    */
-  public getCellDimensions(viewPort: IViewport): IViewport {
+  private getCellDimensions(
+    margins: IMargins,
+    includeTitle: boolean
+  ): IViewport {
     let marginLeft = this.margins.left * (this.settings.columnCount + 1);
     let totalMarginTop = this.margins.top * (this.settings.rowCount + 1);
     let totalWidth = this.settings.viewPort.width - marginLeft;
     if (this.hasScroll()) totalWidth -= 20;
+    if (this.settings.footer) totalMarginTop -= this.settings.footer.size;
     let width = totalWidth / this.settings.columnCount;
     let height =
       (this.settings.viewPort.height - totalMarginTop) / this.settings.rowCount;
@@ -125,6 +142,19 @@ export class GridLayout {
       width: width,
       height: height
     };
+  }
+
+  private calculateTitleHeight(): number {
+    return 0;
+  }
+
+  private updateHeaderMargins() {
+     this.headerMargins = {
+       bottom: this.settings.footer ? this.settings.footer.size: 0,
+       left: this.settings.left ? this.settings.left.size: 0,
+       right: this.settings.right ? this.settings.right.size: 0,
+       top: 0
+     }
   }
 
   private hasScroll(): boolean {
@@ -150,25 +180,26 @@ export class GridLayout {
     if (!this.gridFooter) {
       this.gridFooter = $("<div />")
         .css("height", this.settings.footer.size)
-        .css('width', this.settings.viewPort.width)
+        .css("width", this.settings.viewPort.width)
         .addClass("grid-footer")
         .appendTo(this.grid);
     }
 
-    let viewPort = this.getCellDimensions(this.settings.viewPort);
+    let viewPort = this.getCellDimensions(this.headerMargins, true);
     viewPort.height = this.settings.footer.size;
     let y = 0;
     let x = this.margins.left;
     for (let i = 0; i < this.settings.rowCount; i++) {
       let x = this.margins.left;
       let cell = this.buildCell(y, x, viewPort);
+      cell.appendTo(this.gridFooter);
       this.settings.footer.render(cell);
-       x += viewPort.width + this.margins.left;
+      x += viewPort.width + this.margins.left;
     }
   }
 
   private async renderCells(): Promise<void> {
-    let viewPort = this.getCellDimensions(this.settings.viewPort);
+    let viewPort = this.getCellDimensions(this.headerMargins, true);
     let y = this.margins.top;
     let x = this.margins.left;
     for (let i = 0; i < this.settings.rowCount; i++) {

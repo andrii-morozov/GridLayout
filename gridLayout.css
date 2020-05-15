@@ -5,6 +5,8 @@
   background-color: light-green;
   opacity: 100%;
   position: relative;
+  display: flex;
+  flex-direction: column;
   overflow-y: scroll;
 }
 
@@ -20,8 +22,14 @@
 }
 
 .grid-footer {
-  position: absolute;
-  bottom: 0;
+  flex-grow: 0;
+  flex-shrink: 0;
+}
+
+.grid-scroll-wrapper {
+  flex-grow: 0;
+  flex-basis: 0;
+  flex-shrink: 1
 }
 
 .grid-cell-container {
