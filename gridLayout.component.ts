@@ -102,8 +102,13 @@ export class GridLayout {
         height: this.settings.viewPort.height
       })
       .appendTo(this.container);
+    
+    let gridBody = $("<div />")
+      .addClass("grid-body")
+      .appendTo(this.grid);
+    
     this.gridScrollWrapper = $("<div />");
-    this.gridScrollWrapper.appendTo(this.grid).addClass("grid-scroll-wrapper");
+    this.gridScrollWrapper.appendTo(gridBody).addClass("grid-scroll-wrapper");
 
     this.gridCellContainer = $("<div />");
     this.gridCellContainer
@@ -133,19 +138,18 @@ export class GridLayout {
       this.settings.viewPort.width -
       this.headerMargins.left -
       this.headerMargins.right;
-    
-    let height = 
+
+    let height =
       this.settings.viewPort.height -
       this.headerMargins.top -
       this.headerMargins.bottom;
-      
+
     let totalXMargin = this.margins.left * (this.settings.columnCount + 1);
     let totalYMargin = this.margins.top * (this.settings.rowCount + 1);
     width = width - totalXMargin;
     if (this.hasScroll()) width -= 20;
     let cellWidth = width / this.settings.columnCount;
-    let cellHeight =
-      (height - totalYMargin) / this.settings.rowCount;
+    let cellHeight = (height - totalYMargin) / this.settings.rowCount;
 
     return {
       width: cellWidth,
@@ -198,7 +202,7 @@ export class GridLayout {
     viewPort.height = this.settings.footer.size;
     let y = 0;
     let x = this.margins.left;
-    for (let i = 0; i < this.settings.rowCount; i++) {
+    for (let i = 0; i < this.settings.columnCount; i++) {
       let x = this.margins.left;
       let cell = this.buildCell(y, x, viewPort);
       cell.appendTo(this.gridFooter);
