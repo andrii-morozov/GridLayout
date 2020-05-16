@@ -278,3 +278,20 @@ export class GridLayout {
     return cell;
   }
 }
+
+interface IGridCell {
+  width: number;
+  height: number
+}
+
+class GridRenderer {
+  public renderGrid(): void {}
+
+  public renderFooter(): void {}
+
+  private renderRow(): void {}
+
+  private renderCell(): void {
+
+  }
+}
