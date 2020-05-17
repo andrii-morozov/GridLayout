@@ -1,0 +1,10 @@
+{
+    "compilerOptions": {
+        "noImplicitAny": true,
+        "target": "es5"
+    },
+    "files": [
+        "gridLayout.component.ts",
+        "index.ts"
+    ]
+}

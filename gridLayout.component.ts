@@ -102,11 +102,11 @@ export class GridLayout {
         height: this.settings.viewPort.height
       })
       .appendTo(this.container);
-    
+
     let gridBody = $("<div />")
       .addClass("grid-body")
       .appendTo(this.grid);
-    
+
     this.gridScrollWrapper = $("<div />");
     this.gridScrollWrapper.appendTo(gridBody).addClass("grid-scroll-wrapper");
 
@@ -120,7 +120,7 @@ export class GridLayout {
     this.grid.remove();
   }
 
-  public calculateCellSize(margins: IMargins): number {
+  public calculateCellSize(margins: IMargins): IViewport {
     // In case for external calculation we should give the cell
     // size that chart will use to render.That does not include the title
     // even though it's actually part of the cell.
@@ -281,7 +281,7 @@ export class GridLayout {
 
 interface GridCell {
   width: number;
-  renderCell: (element: JQuery, cellIndex) => void;
+  renderCell: (element: JQuery, cellIndex: number) => void;
 }
 
 interface GridRow {
@@ -303,7 +303,7 @@ interface GridRenderSettings {
 }
 
 interface GridRenderResult {
-  
+
 }
 
 class GridRenderer {
@@ -321,33 +321,39 @@ class GridRenderer {
   }
 
   public render(container: JQuery, settings: GridRenderSettings): void {
-    if(!this.isInitialized)
+    if (!this.isInitialized)
       this.initialize();
   }
 
   private updateFooter(): void {
     let gridFooter = this.settings.foooter
-    if(!gridFooter) {
+    if (!gridFooter) {
       this.gridFooter.hide();
       return;
     }
 
     let row = this.settings.row;
-    let rowFooter = undefined;
-    if(row)
+    let rowFooter: GridHeader = undefined;
+    if (row.footer)
+      rowFooter = {
+        size: row.footer.size,
+        render: () => { }
+      };
 
-    
+    let rowHeader = undefined;
+    if (row.header)
+      rowHeader = {
+        size: row.header.size,
+        // we should leave header cells empty in case of footer.
+        render: () => { }
+      };
+
+
     this.gridFooter.css('height', gridFooter.size);
     let footerRow: GridRow = {
       columnCount: row.columnCount,
-      footer: row.footer ? {
-        size: row.footer.size,
-        render: () => void
-       } : undefined,
-      header: row.header ? {
-        size: row.header.size,
-        render: () => void
-      }: undefined,
+      footer: rowFooter,
+      header: rowHeader,
       parent: this.gridFooter,
       height: gridFooter.size,
       cell: {
@@ -358,7 +364,7 @@ class GridRenderer {
   }
 
   private renderRow(settings: GridRow): void {
-    
+
   }
 
   private renderCell(): void {
@@ -377,10 +383,10 @@ class GridRenderer {
   }
 
   private buildElement(
-    parent: JQuery, 
-    className: string, 
+    parent: JQuery,
+    className: string,
     viewPort?: IViewport): JQuery {
-      let element = $('<div />')
+    let element = $('<div />')
       .addClass(className)
       .appendTo(parent)
 
