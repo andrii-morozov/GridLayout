@@ -33,6 +33,18 @@
   overflow-y: scroll;
 }
 
+.grid-viewport {
+  display: flex;
+  flex-direction: column; 
+}
+
+.grid-row {
+  display: flex;
+  flex-direction: row;
+  flex-shrink: 0;
+  flex-grow: 0
+}
+
 .grid-scroll-wrapper {
 
 }
@@ -40,4 +52,6 @@
 .grid-cell-container {
   box-sizing: border-box;
   border: 1px solid black;
+  flex-shrink: 0;
+  flex-grow: 0;
 }

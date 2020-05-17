@@ -279,19 +279,111 @@ export class GridLayout {
   }
 }
 
-interface IGridCell {
+interface GridCell {
   width: number;
-  height: number
+  renderCell: (element: JQuery, cellIndex) => void;
+}
+
+interface GridRow {
+  columnCount: number;
+  parent: JQuery;
+  height: number;
+  footer: GridHeader;
+  header: GridHeader;
+  cell: GridCell;
+}
+
+interface GridRenderSettings {
+  viewport: IViewport;
+  parent: JQuery;
+  foooter?: GridHeader;
+  totalRowCount: number;
+  rowCount: number;
+  row: GridRow;
+}
+
+interface GridRenderResult {
+  
 }
 
 class GridRenderer {
-  public renderGrid(): void {}
+  private grid: JQuery;
+  private gridScrollWrapper: JQuery;
+  private gridViewport: JQuery;
+  private gridBody: JQuery;
+  private gridFooter: JQuery;
+  private settings: GridRenderSettings;
+  // for lazy initialization
+  private isInitialized: boolean = false;
 
-  public renderFooter(): void {}
+  constructor(private readonly container: JQuery) {
 
-  private renderRow(): void {}
+  }
+
+  public render(container: JQuery, settings: GridRenderSettings): void {
+    if(!this.isInitialized)
+      this.initialize();
+  }
+
+  private updateFooter(): void {
+    let gridFooter = this.settings.foooter
+    if(!gridFooter) {
+      this.gridFooter.hide();
+      return;
+    }
+
+    let row = this.settings.row;
+    let rowFooter = undefined;
+    if(row)
+
+    
+    this.gridFooter.css('height', gridFooter.size);
+    let footerRow: GridRow = {
+      columnCount: row.columnCount,
+      footer: row.footer ? {
+        size: row.footer.size,
+        render: () => void
+       } : undefined,
+      header: row.header ? {
+        size: row.header.size,
+        render: () => void
+      }: undefined,
+      parent: this.gridFooter,
+      height: gridFooter.size,
+      cell: {
+        width: row.cell.width,
+        renderCell: (element: JQuery, cellIndex: number) => { gridFooter.render(element) }
+      }
+    }
+  }
+
+  private renderRow(settings: GridRow): void {
+    
+  }
 
   private renderCell(): void {
 
+  }
+
+  private initialize() {
+    let settings = this.settings;
+    let viewport = settings.viewport
+    this.isInitialized = true;
+    this.grid = this.buildElement(this.container, 'grid');
+    this.gridBody = this.buildElement(this.grid, 'grid-body');
+    this.gridFooter = this.buildElement(this.grid, 'grid-footer');
+    this.gridScrollWrapper = this.buildElement(this.grid, 'grid-scroll-wrapper');
+    this.gridBody = this.buildElement(this.gridScrollWrapper, 'grid-body');
+  }
+
+  private buildElement(
+    parent: JQuery, 
+    className: string, 
+    viewPort?: IViewport): JQuery {
+      let element = $('<div />')
+      .addClass(className)
+      .appendTo(parent)
+
+    return element;
   }
 }
