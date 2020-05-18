@@ -198,7 +198,7 @@ class GridRenderer {
     this.gridScrollWrapper.css("height", settings.viewport.height);
 
     this.updateFooter();
-    //this.updateRows();
+    this.updateRows();
   }
 
   private updateFooter(): void {
@@ -228,6 +228,11 @@ class GridRenderer {
       };
 
     this.gridFooter.css("height", gridFooter.size);
+    // We need to account on scroll to make sure that columns align
+    // ToDo: think about how can we do this better.
+    if(this.settings.totalRowCount > this.settings.rowCount)
+      this.gridFooter.css('width', this.settings.viewport.width - ScrollSize)
+  
     let footerRow: GridRow = {
       columnCount: row.columnCount,
       footer: rowFooter,
@@ -261,8 +266,9 @@ class GridRenderer {
 
   private renderRow(element: JQuery, settings: GridRow, cellIndex: number): void {
     let row = this.buildElement(element, "grid-row");
+    row.css('height', settings.height);
     if (settings.header) {
-      let headerCell = this.buildElement(row, "grid-cell");
+      let headerCell = this.buildElement(row, "grid-header-cell");
       headerCell.css("width", settings.header.size);
       settings.header.render(headerCell);
     }
@@ -280,7 +286,7 @@ class GridRenderer {
     }
 
     if (settings.footer) {
-      let footerCell = this.buildElement(row, "grid-cell");
+      let footerCell = this.buildElement(row, "grid-header-cell");
       footerCell.css("width", settings.footer.size);
       settings.footer.render(footerCell);
     }

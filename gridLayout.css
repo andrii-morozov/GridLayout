@@ -10,14 +10,15 @@
 }
 
 .grid-cell {
-  position: absolute;
   box-sizing: border-box;
   border: 1px solid black;
   display: flex;
+  flex-grow: 1;
 }
 
-.grid-cell-title {
-  padding: 5px;
+grid-header-cell {
+  /** headers supposed to used fixed size */
+  flex-grow: 0
 }
 
 .grid-footer {
@@ -46,7 +47,7 @@
 }
 
 .grid-scroll-wrapper {
-
+  overflow: scroll-y
 }
 
 .grid-cell-container {
