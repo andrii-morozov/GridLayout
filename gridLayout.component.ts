@@ -135,10 +135,6 @@ export class GridLayout {
     };
   }
 
-  private calculateTitleHeight(): number {
-    return 0;
-  }
-
   private updateHeaderMargins() {
     this.headerMargins = {
       bottom: this.settings.footer ? this.settings.footer.size : 0,
