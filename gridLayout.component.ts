@@ -202,7 +202,7 @@ class GridRenderer {
     this.gridScrollWrapper.css("height", settings.viewport.height);
 
     this.updateFooter();
-    this.updateRows();
+    //this.updateRows();
   }
 
   private updateFooter(): void {
@@ -279,6 +279,7 @@ class GridRenderer {
       //ToDo: support title, margin, customization.
       // We might need to have GridDataBinder to read data.
       let cell = this.buildElement(row, "grid-cell");
+      debugger;
       settings.cell.renderCell({element: cell, index: cellIndex + i});
     }
 

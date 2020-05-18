@@ -49,7 +49,7 @@ gridLayout.render();
 
 function renderUnsharedAxis(data: ICellRenderData): Promise<void> {
     let text = $('<span />').appendTo(data.element);
-    text.text(`Cell ${data.rowIndex}-${data.columnIndex} CellIndex: ${data.index}`)
+    text.text(`CellIndex: ${data.index}`)
 
     return Promise.resolve();
 }
