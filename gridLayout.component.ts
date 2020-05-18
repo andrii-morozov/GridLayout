@@ -23,10 +23,7 @@ export interface GridHeader {
 }
 
 export interface ICellRenderData {
-  rowIndex: number;
-  columnIndex: number;
   index: number;
-  viewPort: IViewport;
   element: JQuery;
 }
 
@@ -42,98 +39,68 @@ export interface GridSettings {
   right?: GridHeader;
 }
 
-export class GridLayout {
-  private grid: JQuery;
-  private margins: IMargins;
-  // used to calculate scroll position.
-  private currentCellIndex: number;
-  private gridCellContainer: JQuery;
-  // ToDo: reuse some of the existing scroll mechanisms.
-  private gridScrollWrapper: JQuery;
-  private gridFooter: JQuery;
+const ScrollSize: number = 20;
 
-  private scrollTop: number = 0;
-  private isRendering = false;
+export class GridLayout {
   private headerMargins: IMargins;
+  private renderer: GridRenderer;
 
   constructor(
     private readonly container: HTMLElement,
     private readonly settings: GridSettings
   ) {
-    this.currentCellIndex = 0;
-    // We will read settings from objects.
-    // Actually the same will happen for row/columns count.
-    this.margins = {
-      top: 10,
-      left: 10,
-      bottom: 0,
-      right: 0
-    };
+    let render = new GridRenderer($(container));
   }
 
   // if we make it asynchronouse we will need to handle properly
   // feedback when redering is done.
   public async render(): Promise<void> {
-    if (!this.grid) {
-      // lazy initialiation. Only when we need it.
-      this.initGridLayout();
+    this.updateHeaderMargins();
+    let settings = this.calculateGridRenderSettings();
+    this.renderer.render(settings);
+  }
+
+  private calculateGridRenderSettings(): GridRenderSettings {
+    let viewPort = this.getCellDimensions(this.headerMargins);
+    let cell: GridCell = {
+      width: viewPort.width,
+      renderCell: this.settings.renderCell
+    };
+
+    let gridRow: GridRow = {
+      header: undefined,
+      footer: undefined,
+      cell: cell,
+      height: viewPort.height,
+      columnCount: this.settings.columnCount
     }
 
-    this.gridCellContainer.css({
-      width: !this.hasScroll()
-        ? this.settings.viewPort.width
-        : this.settings.viewPort.width - 20,
-      height: this.settings.footer
-        ? this.settings.viewPort.height - this.settings.footer.size
-        : this.settings.viewPort.height
-    });
-
-    this.updateScrollPosition();
-    this.renderFooter();
-    await this.renderCells();
+    let settings: GridRenderSettings  = {
+      totalRowCount: Math.ceil(this.settings.cellCount / this.settings.rowCount),
+      viewport: this.settings.viewPort,
+      footer: this.settings.footer,
+      rowCount: this.settings.rowCount,
+      row: gridRow
+    }
+    
+    return settings;
   }
 
-  private initGridLayout() {
-    this.grid = $("<div />");
-    this.grid
-      .addClass("grid")
-      .css({
-        width: this.settings.viewPort.width,
-        height: this.settings.viewPort.height
-      })
-      .appendTo(this.container);
-
-    let gridBody = $("<div />")
-      .addClass("grid-body")
-      .appendTo(this.grid);
-
-    this.gridScrollWrapper = $("<div />");
-    this.gridScrollWrapper.appendTo(gridBody).addClass("grid-scroll-wrapper");
-
-    this.gridCellContainer = $("<div />");
-    this.gridCellContainer
-      .appendTo(this.gridScrollWrapper)
-      .addClass("grid-cell-container");
-  }
-
-  public destroy(): void {
-    this.grid.remove();
+  public destroy() {
+    $(this.container).empty();
   }
 
   public calculateCellSize(margins: IMargins): IViewport {
     // In case for external calculation we should give the cell
     // size that chart will use to render.That does not include the title
     // even though it's actually part of the cell.
-    return this.getCellDimensions(margins, false);
+    return this.getCellDimensions(margins);
   }
 
   /**
    * In case of cartesian when we calculate axes we will need to recalculate viewport based on axes margins. We should expose this before the actual rendering is done.
    */
-  private getCellDimensions(
-    margins: IMargins,
-    includeTitle: boolean
-  ): IViewport {
+  private getCellDimensions(margins: IMargins): IViewport {
     let width =
       this.settings.viewPort.width -
       this.headerMargins.left -
@@ -144,12 +111,9 @@ export class GridLayout {
       this.headerMargins.top -
       this.headerMargins.bottom;
 
-    let totalXMargin = this.margins.left * (this.settings.columnCount + 1);
-    let totalYMargin = this.margins.top * (this.settings.rowCount + 1);
-    width = width - totalXMargin;
-    if (this.hasScroll()) width -= 20;
+    if (this.hasScroll()) width -= ScrollSize;
     let cellWidth = width / this.settings.columnCount;
-    let cellHeight = (height - totalYMargin) / this.settings.rowCount;
+    let cellHeight = height / this.settings.rowCount;
 
     return {
       width: cellWidth,
@@ -176,117 +140,19 @@ export class GridLayout {
     if (totalRows > this.settings.rowCount) return true;
   }
 
-  private calculateGridHeight(): number {
-    if (!this.hasScroll()) return this.settings.viewPort.height;
-
-    let rowHeight = this.settings.viewPort.height / this.settings.rowCount;
-    let totalRows = Math.ceil(
-      this.settings.cellCount / this.settings.columnCount
-    );
-
-    return totalRows * rowHeight;
-  }
-
-  private renderFooter() {
-    if (!this.settings.footer) return;
-
-    if (!this.gridFooter) {
-      this.gridFooter = $("<div />")
-        .css("height", this.settings.footer.size)
-        .css("width", this.settings.viewPort.width)
-        .addClass("grid-footer")
-        .appendTo(this.grid);
-    }
-
-    let viewPort = this.getCellDimensions(this.headerMargins, true);
-    viewPort.height = this.settings.footer.size;
-    let y = 0;
-    let x = this.margins.left;
-    for (let i = 0; i < this.settings.columnCount; i++) {
-      let x = this.margins.left;
-      let cell = this.buildCell(y, x, viewPort);
-      cell.appendTo(this.gridFooter);
-      this.settings.footer.render(cell);
-      x += viewPort.width + this.margins.left;
-    }
-  }
-
-  private async renderCells(): Promise<void> {
-    let viewPort = this.getCellDimensions(this.headerMargins, true);
-    let y = this.margins.top;
-    let x = this.margins.left;
-    for (let i = 0; i < this.settings.rowCount; i++) {
-      let x = this.margins.left;
-      for (let k = 0; k < this.settings.columnCount; k++) {
-        let cell = this.buildCell(y, x, viewPort);
-        this.gridCellContainer.append(cell);
-        await this.settings.renderCell({
-          rowIndex: i,
-          columnIndex: k,
-          index: this.getCellIndex(i, k),
-          viewPort: viewPort,
-          element: cell
-        });
-
-        x += viewPort.width + this.margins.left;
-      }
-
-      y += viewPort.height + this.margins.top;
-    }
-  }
-
-  private updateScrollPosition(): void {
-    let rowHeight = this.settings.viewPort.height / this.settings.rowCount;
-    let totalRows = this.getTotalRows();
-    let height = totalRows * rowHeight;
-
-    this.scrollTop = rowHeight * this.currentCellIndex;
-    this.grid.scrollTop(this.scrollTop);
-    this.gridCellContainer.css({
-      transform: `translate(0, ${rowHeight * this.currentCellIndex}px)`
-    });
-
-    this.gridScrollWrapper.css({
-      height: height
-    });
-  }
-
   private getTotalRows(): number {
     return Math.ceil(this.settings.cellCount / this.settings.columnCount);
-  }
-
-  private getCellIndex(row: number, column: number): number {
-    return (
-      (this.getCurrentRowIndex() + row) * this.settings.columnCount + column
-    );
-  }
-
-  private getCurrentRowIndex(): number {
-    return Math.floor((this.currentCellIndex + 1) / this.settings.columnCount);
-  }
-
-  private buildCell(y: number, x: number, viewPort: IViewport): JQuery {
-    let cell = $("<div />").addClass("grid-cell");
-
-    cell.css({
-      width: viewPort.width,
-      height: viewPort.height,
-      top: y,
-      left: x
-    });
-
-    return cell;
   }
 }
 
 interface GridCell {
   width: number;
-  renderCell: (element: JQuery, cellIndex: number) => void;
+  renderCell: (data: ICellRenderData) => void;
+  //ToDo add support for margins and title.
 }
 
 interface GridRow {
   columnCount: number;
-  parent: JQuery;
   height: number;
   footer: GridHeader;
   header: GridHeader;
@@ -295,15 +161,10 @@ interface GridRow {
 
 interface GridRenderSettings {
   viewport: IViewport;
-  parent: JQuery;
-  foooter?: GridHeader;
+  footer?: GridHeader;
   totalRowCount: number;
   rowCount: number;
   row: GridRow;
-}
-
-interface GridRenderResult {
-
 }
 
 class GridRenderer {
@@ -316,28 +177,35 @@ class GridRenderer {
   // for lazy initialization
   private isInitialized: boolean = false;
 
-  constructor(private readonly container: JQuery) {
+  constructor(private readonly container: JQuery) {}
 
-  }
+  public render(settings: GridRenderSettings): void {
+    if (!this.isInitialized) this.initialize();
 
-  public render(container: JQuery, settings: GridRenderSettings): void {
-    if (!this.isInitialized)
-      this.initialize();
+    let totalHeight = settings.totalRowCount & settings.row.height;
+    // This makes sure that we properly show scroll area size.
+    this.gridScrollWrapper.css("height", settings.viewport.height);
+
+    this.updateFooter();
+    this.updateRows();
   }
 
   private updateFooter(): void {
-    let gridFooter = this.settings.foooter
+    let gridFooter = this.settings.footer;
     if (!gridFooter) {
       this.gridFooter.hide();
       return;
     }
+    // Clear exsting footer first.
+    this.gridFooter.empty();
 
     let row = this.settings.row;
+    // we need to keep headers though do not render any content there
     let rowFooter: GridHeader = undefined;
     if (row.footer)
       rowFooter = {
         size: row.footer.size,
-        render: () => { }
+        render: () => {}
       };
 
     let rowHeader = undefined;
@@ -345,50 +213,87 @@ class GridRenderer {
       rowHeader = {
         size: row.header.size,
         // we should leave header cells empty in case of footer.
-        render: () => { }
+        render: () => {}
       };
 
-
-    this.gridFooter.css('height', gridFooter.size);
+    this.gridFooter.css("height", gridFooter.size);
     let footerRow: GridRow = {
       columnCount: row.columnCount,
       footer: rowFooter,
       header: rowHeader,
-      parent: this.gridFooter,
       height: gridFooter.size,
       cell: {
         width: row.cell.width,
-        renderCell: (element: JQuery, cellIndex: number) => { gridFooter.render(element) }
+        renderCell: (data: ICellRenderData) => {
+          gridFooter.render(data.element);
+        }
       }
+    };
+
+    this.renderRow(this.gridFooter, footerRow, 0);
+  }
+
+  private updateRows(): void {
+    // remove all the existend rows.
+    // this should account on scroll position and update rows
+    // that are visible.
+    this.gridBody.empty();
+
+    let cellIndex = 0;
+    for (let i = 0; this.settings.totalRowCount; i++) {
+      this.renderRow(this.gridBody, this.settings.row, cellIndex)
+      cellIndex += this.settings.row.columnCount;
     }
   }
 
-  private renderRow(settings: GridRow): void {
+  private renderRow(element: JQuery, settings: GridRow, cellIndex: number): void {
+    let row = this.buildElement(element, "grid-row");
+    if (settings.header) {
+      let headerCell = this.buildElement(row, "grid-cell");
+      headerCell.css("width", settings.header.size);
+      settings.header.render(headerCell);
+    }
 
-  }
+    for (let i = 0; i < settings.columnCount; i++) {
+      // we do not need to control width because space will be equally distributed
+      // between cells. This is going to be more complicated eventyally with title
+      // margins ...
 
-  private renderCell(): void {
+      //ToDo: support title, margin, customization.
+      // We might need to have GridDataBinder to read data.
+      let cell = this.buildElement(row, "grid-cell");
+      settings.cell.renderCell({element: cell, index: cellIndex + i});
+    }
 
+    if (settings.footer) {
+      let footerCell = this.buildElement(row, "grid-cell");
+      footerCell.css("width", settings.footer.size);
+      settings.footer.render(footerCell);
+    }
   }
 
   private initialize() {
     let settings = this.settings;
-    let viewport = settings.viewport
+    let viewport = settings.viewport;
     this.isInitialized = true;
-    this.grid = this.buildElement(this.container, 'grid');
-    this.gridBody = this.buildElement(this.grid, 'grid-body');
-    this.gridFooter = this.buildElement(this.grid, 'grid-footer');
-    this.gridScrollWrapper = this.buildElement(this.grid, 'grid-scroll-wrapper');
-    this.gridBody = this.buildElement(this.gridScrollWrapper, 'grid-body');
+    this.grid = this.buildElement(this.container, "grid");
+    this.gridBody = this.buildElement(this.grid, "grid-body");
+    this.gridFooter = this.buildElement(this.grid, "grid-footer");
+    this.gridScrollWrapper = this.buildElement(
+      this.grid,
+      "grid-scroll-wrapper"
+    );
+    this.gridBody = this.buildElement(this.gridScrollWrapper, "grid-body");
   }
 
   private buildElement(
     parent: JQuery,
     className: string,
-    viewPort?: IViewport): JQuery {
-    let element = $('<div />')
+    viewPort?: IViewport
+  ): JQuery {
+    let element = $("<div />")
       .addClass(className)
-      .appendTo(parent)
+      .appendTo(parent);
 
     return element;
   }
