@@ -198,7 +198,7 @@ class GridRenderer {
     this.gridScrollWrapper.css("height", settings.viewport.height);
 
     this.updateFooter();
-    this.updateRows();
+    //this.updateRows();
   }
 
   private updateFooter(): void {
