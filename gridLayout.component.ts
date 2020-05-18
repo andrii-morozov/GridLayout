@@ -41,6 +41,20 @@ export interface GridSettings {
 
 const ScrollSize: number = 20;
 
+/**
+ * Responsible for breaking viewport into multiple cells. 
+ * All the headers and cell content is owned by the consumer.
+ * Grid is responsible for deciding which cells is rendered and when
+ * and also handling scrolling.
+ * General structure is 
+ * body
+ *  row
+ *    header
+ *    cell[] - includes title, content
+ *    footer
+ * footer
+ * It was designed to handle small multiples layout. 
+ */
 export class GridLayout {
   private headerMargins: IMargins;
   private renderer: GridRenderer;
@@ -49,7 +63,7 @@ export class GridLayout {
     private readonly container: HTMLElement,
     private readonly settings: GridSettings
   ) {
-    let render = new GridRenderer($(container));
+    this.renderer = new GridRenderer($(container));
   }
 
   // if we make it asynchronouse we will need to handle properly
@@ -180,6 +194,7 @@ class GridRenderer {
   constructor(private readonly container: JQuery) {}
 
   public render(settings: GridRenderSettings): void {
+    this.settings = settings;
     if (!this.isInitialized) this.initialize();
 
     let totalHeight = settings.totalRowCount & settings.row.height;
@@ -240,6 +255,8 @@ class GridRenderer {
     this.gridBody.empty();
 
     let cellIndex = 0;
+    // In future we will update only visible rows. As you scroll some rows
+    // needs to be removed and some added.
     for (let i = 0; this.settings.totalRowCount; i++) {
       this.renderRow(this.gridBody, this.settings.row, cellIndex)
       cellIndex += this.settings.row.columnCount;
@@ -279,10 +296,7 @@ class GridRenderer {
     this.grid = this.buildElement(this.container, "grid");
     this.gridBody = this.buildElement(this.grid, "grid-body");
     this.gridFooter = this.buildElement(this.grid, "grid-footer");
-    this.gridScrollWrapper = this.buildElement(
-      this.grid,
-      "grid-scroll-wrapper"
-    );
+    this.gridScrollWrapper = this.buildElement(this.grid,"grid-scroll-wrapper");
     this.gridBody = this.buildElement(this.gridScrollWrapper, "grid-body");
   }
 
